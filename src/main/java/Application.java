@@ -1,14 +1,10 @@
-import com.fasterxml.jackson.databind.MappingIterator;
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import lombok.extern.slf4j.Slf4j;
+import lombok.var;
 import models.ClimateData;
 import models.Product;
 import models.Purchase;
 import models.Relevation;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.jkarma.mining.joiners.TidSet;
 import org.jkarma.mining.providers.TidSetProvider;
 import org.jkarma.mining.structures.MiningStrategy;
@@ -22,9 +18,12 @@ import org.jkarma.pbcd.events.*;
 import org.jkarma.pbcd.patterns.Patterns;
 import org.jkarma.pbcd.similarities.UnweightedJaccard;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.groupingBy;
@@ -42,16 +41,34 @@ public class Application {
                 .master("local")
                 .appName("Java Spark SQL basic example")
                 .getOrCreate();
-        Dataset<Row> df = spark.read().csv(filePath);
+        Dataset<Row> df = null;
+        for (Path path : Files.list(Paths.get(filePath)).collect(Collectors.toList())) {
+            var temp = spark.read().format("csv")
+                    .option("header", "true")
+                    .option("delimiter", ",")
+                    .option("inferSchema", "true").load(path.toString());
+            if (df == null) {
+                df = temp;
+            } else {
+                df = df.union(temp);
+            }
+        }
 
-        File csvFile = new File(filePath);
-        CsvMapper csvMapper = new CsvMapper();
+        assert df != null;
+        var result = df.groupBy("DATE").df().sort("DATE");
+        result.show();
+        result = result.filter((result.col("AWND").isNull().and(result.col("TOBS").isNotNull())));
+        Encoder<ClimateData> personEncoder = Encoders.bean(ClimateData.class);
+        Dataset<ClimateData> climateDataset = result.as(personEncoder);
 
-        CsvSchema csvSchema = csvMapper.typedSchemaFor(ClimateData.class).withHeader().withColumnSeparator(',');
+//        File csvFile = new File(filePath);
+//        CsvMapper csvMapper = new CsvMapper();
+//
+//        CsvSchema csvSchema = csvMapper.typedSchemaFor(ClimateData.class).withHeader().withColumnSeparator(',');
+//
+//        MappingIterator<ClimateData> complexUsersIter = csvMapper.readerWithTypedSchemaFor(ClimateData.class).with(csvSchema).readValues(csvFile);
 
-        MappingIterator<ClimateData> complexUsersIter = csvMapper.readerWithTypedSchemaFor(ClimateData.class).with(csvSchema).readValues(csvFile);
-
-        List<ClimateData> complexUsers = complexUsersIter.readAll();
+        List<ClimateData> complexUsers = climateDataset.collectAsList();
 
         int blockSize = 25;
         float minFreq = 0.25f;
@@ -122,7 +139,6 @@ public class Application {
         } catch (Exception e) {
             System.out.println(e);
         }
-        log.info("Hello world");
     }
 
     private static Stream<Relevation> generateRelevationDataset(List<ClimateData> complexUsers) {
@@ -136,7 +152,8 @@ public class Application {
         return result.stream();
     }
 
-    public static PBCD<Relevation, ClimateData, TidSet, Boolean> getPBCD(float minFreq, float minChange, int blockSize) {
+    public static PBCD<Relevation, ClimateData, TidSet, Boolean> getPBCD(float minFreq, float minChange,
+                                                                         int blockSize) {
         //we prepare the time window model and the data accessor
         WindowingStrategy<TidSet> model = Windows.blockwiseSliding();
         TidSetProvider<ClimateData> accessor = new TidSetProvider<>(model);
@@ -213,7 +230,8 @@ public class Application {
     }
 
 
-    public static PBCD<Purchase, Product, TidSet, Boolean> getPurchasePBCD(float minFreq, float minChange, int blockSize) {
+    public static PBCD<Purchase, Product, TidSet, Boolean> getPurchasePBCD(float minFreq, float minChange,
+                                                                           int blockSize) {
         //we prepare the time window model and the data accessor
         WindowingStrategy<TidSet> model = Windows.blockwiseSliding();
         TidSetProvider<Product> accessor = new TidSetProvider<>(model);
@@ -228,7 +246,8 @@ public class Application {
         return Detectors.upon(strategy).unweighted((p, t) -> Patterns.isFrequent(p, minFreq, t), new UnweightedJaccard()).describe(Descriptors.partialEps(minFreq, 1.00)).build(minChange, blockSize);
     }
 
-    public static Stream<Purchase> getRandomicDataset(int purchaseNum, int purchaseMinProducts, int purchaseMaxProducts) {
+    public static Stream<Purchase> getRandomicDataset(int purchaseNum, int purchaseMinProducts,
+                                                      int purchaseMaxProducts) {
         List<Purchase> result = new ArrayList<>();
         for (int i = 0; i < purchaseNum; i++) {
             int randomItemNumber = (int) (Math.random() * (purchaseMaxProducts - purchaseMinProducts + 1)) + purchaseMinProducts;

@@ -1,6 +1,5 @@
 package models;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
 
@@ -11,16 +10,27 @@ public class ClimateData implements Comparable<ClimateData> {
     String name;
     String date;
     String prcp; //mm
-    String sn32; //mm
     String snow; //mm
-    String sx32; //mm
     String tmax;//Celsius
     String tmin;//Celsius
     String tobs;//Celsius
     String awnd;//mm
 
+    public ClimateData() {
+
+    }
+
+    public ClimateData(ClimateData data) {
+        this.date = data.date;
+        this.prcp = data.prcp;
+        this.snow = data.snow;
+        this.tmax = data.tmax;
+        this.tmin = data.tmin;
+        this.tobs = data.tobs;
+    }
+
     @Override
     public int compareTo(ClimateData o) {
-        return prcp.compareTo(o.getPrcp());
+        return prcp == null ? 0 : prcp.compareTo(o.getPrcp());
     }
 }

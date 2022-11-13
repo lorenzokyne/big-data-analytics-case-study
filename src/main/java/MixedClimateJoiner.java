@@ -1,5 +1,4 @@
 import models.ClimateData;
-import models.Product;
 import org.jkarma.mining.joiners.Joiner;
 import org.jkarma.mining.providers.Context;
 

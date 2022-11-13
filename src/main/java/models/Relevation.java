@@ -1,6 +1,5 @@
 package models;
 
-import com.google.common.collect.Sets;
 import org.jkarma.model.Transaction;
 
 import java.time.Instant;
@@ -19,7 +18,7 @@ public class Relevation implements Transaction<ClimateData> {
     public Relevation(List<ClimateData> data) {
         this.tid = Relevation.getNextTid();
         this.timestamp = Instant.now();
-        this.reads = new HashSet<>(data);
+        this.reads = data.stream().map(ClimateData::new).collect(Collectors.toSet());
     }
 
     public static int getNextTid() {
