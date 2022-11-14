@@ -36,9 +36,13 @@ public class Application {
         if (args.length > 0) {
             filePath = args[0];
         }
+        String servicePath = "local";
+        if(args.length > 1){
+            servicePath = args[1];
+        }
         SparkSession spark = SparkSession
                 .builder()
-                .master("local")
+                .master(servicePath)
                 .appName("Java Spark SQL basic example")
                 .getOrCreate();
         Dataset<Row> df = null;

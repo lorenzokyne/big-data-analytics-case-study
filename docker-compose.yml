@@ -1,0 +1,13 @@
+version: '3.7'
+services:
+  service:
+    ports:
+      - 7077:7077
+      - 4040:4040
+      - 8080:8080
+      - 8081:8081
+      - 8082:8082
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: 'bdacs'
