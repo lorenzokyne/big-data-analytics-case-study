@@ -33,17 +33,17 @@ public class Application {
     public static void main(String[] args) throws IOException {
 
         String filePath = "C:\\csv_tests\\complex_users.csv";
+        String servicePath = "local";
         if (args.length > 0) {
             filePath = args[0];
-        }
-        String servicePath = "local";
-        if(args.length > 1){
-            servicePath = args[1];
+            if(args.length > 1){
+                servicePath = args[1];
+            }
         }
         SparkSession spark = SparkSession
                 .builder()
                 .master(servicePath)
-                .appName("Java Spark SQL basic example")
+                .appName("BDA - Case Study - Capocchiano Narracci: Climate Change Detection")
                 .getOrCreate();
         Dataset<Row> df = null;
         for (Path path : Files.list(Paths.get(filePath)).collect(Collectors.toList())) {

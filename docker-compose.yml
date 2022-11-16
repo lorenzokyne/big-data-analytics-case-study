@@ -1,13 +1,19 @@
 version: '3.9'
 services:
-  service:
+  spark-master:
     ports:
-      - 7077:7077
-      - 4040:4040
       - 8080:8080
-      - 8081:8081
-      - 8082:8082
+    expose:
+      - 7077
     build:
       context: .
       dockerfile: Dockerfile
     container_name: 'bdacs'
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+    expose:
+      - 8081
+    depends_on:
+      - spark-master
