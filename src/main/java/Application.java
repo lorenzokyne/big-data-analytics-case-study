@@ -3,6 +3,7 @@ import lombok.var;
 import models.ClimateData;
 import models.Relevation;
 import org.apache.spark.sql.*;
+import org.jetbrains.annotations.Nullable;
 import org.jkarma.mining.joiners.TidSet;
 import org.jkarma.mining.providers.TidSetProvider;
 import org.jkarma.mining.structures.MiningStrategy;
@@ -46,6 +47,39 @@ public class Application {
                 .master(servicePath)
                 .appName("BDA - Case Study - Capocchiano Narracci: Climate Change Detection")
                 .getOrCreate();
+
+        Dataset<Row> df = readCsvFile(filePath, spark);
+
+        assert df != null;
+        var result = df.groupBy("DATE").df().sort("DATE");
+        result = result.filter((result.col("AWND").isNotNull().and(result.col("TOBS").isNotNull())));
+
+        Stream<Relevation> dataset = prepareDataset(result);
+
+        int blockSize = 25;
+        float minFreq = 0.25f;
+        float minChange = 0.3f;
+        PBCD<Relevation, ClimateData, TidSet, Boolean> detector = getPBCD(minFreq, minChange, blockSize);
+
+        detectChanges(detector);
+        try {
+            dataset.forEach(detector);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static Stream<Relevation> prepareDataset(Dataset<Row> result) {
+        Encoder<ClimateData> personEncoder = Encoders.bean(ClimateData.class);
+        Dataset<ClimateData> climateDataset = result.as(personEncoder);
+
+        List<ClimateData> complexUsers = climateDataset.collectAsList();
+
+        return generateRelevationDataset(complexUsers);
+    }
+
+    @Nullable
+    private static Dataset<Row> readCsvFile(String filePath, SparkSession spark) throws IOException {
         Dataset<Row> df = null;
         for (Path path : Files.list(Paths.get(filePath)).collect(Collectors.toList())) {
             var temp = spark.read().format("csv")
@@ -58,23 +92,10 @@ public class Application {
                 df = df.union(temp);
             }
         }
+        return df;
+    }
 
-        assert df != null;
-        var result = df.groupBy("DATE").df().sort("DATE");
-        result.show();
-        result = result.filter((result.col("AWND").isNull().and(result.col("TOBS").isNotNull())));
-        Encoder<ClimateData> personEncoder = Encoders.bean(ClimateData.class);
-        Dataset<ClimateData> climateDataset = result.as(personEncoder);
-
-        List<ClimateData> complexUsers = climateDataset.collectAsList();
-
-        int blockSize = 25;
-        float minFreq = 0.25f;
-        float minChange = 0.3f;
-        Stream<Relevation> dataset = generateRelevationDataset(complexUsers);
-
-        PBCD<Relevation, ClimateData, TidSet, Boolean> detector = getPBCD(minFreq, minChange, blockSize);
-
+    private static void detectChanges(PBCD<Relevation, ClimateData, TidSet, Boolean> detector) {
         detector.registerListener(new PBCDEventListener<ClimateData, TidSet>() {
 
             @Override
@@ -124,18 +145,6 @@ public class Application {
                 //do nothing
             }
         });
-        try {
-            dataset.forEach((e) -> {
-                detector.accept(e);
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     private static Stream<Relevation> generateRelevationDataset(List<ClimateData> complexUsers) {

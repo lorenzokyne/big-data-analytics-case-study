@@ -2,8 +2,10 @@ package models;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 @JsonPropertyOrder({"station", "name", "date", "awnd", "prcp", "snow", "tmax", "tmin", "tobs"})
 public class ClimateData implements Comparable<ClimateData> {
     String station;
@@ -11,14 +13,11 @@ public class ClimateData implements Comparable<ClimateData> {
     String date;
     String prcp; //mm
     String snow; //mm
-    String tmax;//Celsius
-    String tmin;//Celsius
-    String tobs;//Celsius
-    String awnd;//mm
+    String tmax; //Celsius
+    String tmin; //Celsius
+    String tobs; //Celsius
+    String awnd; //mm
 
-    public ClimateData() {
-
-    }
 
     public ClimateData(ClimateData data) {
         this.date = data.date;
