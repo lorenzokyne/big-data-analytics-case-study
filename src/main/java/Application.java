@@ -36,7 +36,7 @@ public class Application {
         String servicePath = "local";
         if (args.length > 0) {
             filePath = args[0];
-            if(args.length > 1){
+            if (args.length > 1) {
                 servicePath = args[1];
             }
         }
@@ -65,13 +65,6 @@ public class Application {
         Encoder<ClimateData> personEncoder = Encoders.bean(ClimateData.class);
         Dataset<ClimateData> climateDataset = result.as(personEncoder);
 
-//        File csvFile = new File(filePath);
-//        CsvMapper csvMapper = new CsvMapper();
-//
-//        CsvSchema csvSchema = csvMapper.typedSchemaFor(ClimateData.class).withHeader().withColumnSeparator(',');
-//
-//        MappingIterator<ClimateData> complexUsersIter = csvMapper.readerWithTypedSchemaFor(ClimateData.class).with(csvSchema).readValues(csvFile);
-
         List<ClimateData> complexUsers = climateDataset.collectAsList();
 
         int blockSize = 25;
@@ -86,19 +79,19 @@ public class Application {
             @Override
             public void patternUpdateCompleted(PatternUpdateCompletedEvent<ClimateData, TidSet> arg0) {
                 //do nothing
-                System.out.println("pattern updated " + arg0);
+                log.info("pattern updated " + arg0);
             }
 
             @Override
             public void patternUpdateStarted(PatternUpdateStartedEvent<ClimateData, TidSet> arg0) {
                 //do nothing
-                System.out.println("started");
+                log.info("started");
             }
 
             @Override
             public void changeDetected(ChangeDetectedEvent<ClimateData, TidSet> event) {
-                System.out.println("change detected: " + event.getAmount());
-                System.out.println("\tdescribed by:");
+                log.info("change detected: " + event.getAmount());
+                log.info("\tdescribed by:");
                 event.getDescription().forEach(p -> {
                     double freqReference = p.getFirstEval().getRelativeFrequency() * 100;
                     double freqTarget = p.getSecondEval().getRelativeFrequency() * 100;
@@ -110,19 +103,19 @@ public class Application {
                         message = "decreased frequency from ";
                     }
                     message += Double.toString(freqReference) + "% to " + Double.toString(freqTarget) + "%";
-                    System.out.println("\t\t" + p.getItemSet() + " " + message);
+                    log.info("\t\t" + p.getItemSet() + " " + message);
                 });
             }
 
             @Override
             public void changeNotDetected(ChangeNotDetectedEvent<ClimateData, TidSet> arg0) {
-                System.out.println("change not detected: " + arg0.getAmount());
+                log.info("change not detected: " + arg0.getAmount());
             }
 
             @Override
             public void changeDescriptionCompleted(ChangeDescriptionCompletedEvent<ClimateData, TidSet> arg0) {
                 //do nothing
-                System.out.println("Descriptor changed");
+                log.info("Descriptor changed");
             }
 
             @Override
@@ -131,7 +124,6 @@ public class Application {
             }
         });
         try {
-
             dataset.forEach((e) -> {
                 detector.accept(e);
                 try {
@@ -141,7 +133,7 @@ public class Application {
                 }
             });
         } catch (Exception e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
     }
 
@@ -185,19 +177,19 @@ public class Application {
             @Override
             public void patternUpdateCompleted(PatternUpdateCompletedEvent<Product, TidSet> arg0) {
                 //do nothing
-                System.out.println("pattern updated " + arg0);
+                log.info("pattern updated " + arg0);
             }
 
             @Override
             public void patternUpdateStarted(PatternUpdateStartedEvent<Product, TidSet> arg0) {
                 //do nothing
-                System.out.println("started");
+                log.info("started");
             }
 
             @Override
             public void changeDetected(ChangeDetectedEvent<Product, TidSet> event) {
-                System.out.println("change detected: " + event.getAmount());
-                System.out.println("\tdescribed by:");
+                log.info("change detected: " + event.getAmount());
+                log.info("\tdescribed by:");
                 event.getDescription().forEach(p -> {
                     double freqReference = p.getFirstEval().getRelativeFrequency() * 100;
                     double freqTarget = p.getSecondEval().getRelativeFrequency() * 100;
@@ -209,19 +201,19 @@ public class Application {
                         message = "decreased frequency from ";
                     }
                     message += Double.toString(freqReference) + "% to " + Double.toString(freqTarget) + "%";
-                    System.out.println("\t\t" + p.getItemSet() + " " + message);
+                    log.info("\t\t" + p.getItemSet() + " " + message);
                 });
             }
 
             @Override
             public void changeNotDetected(ChangeNotDetectedEvent<Product, TidSet> arg0) {
-                System.out.println("change not detected: " + arg0.getAmount());
+                log.info("change not detected: " + arg0.getAmount());
             }
 
             @Override
             public void changeDescriptionCompleted(ChangeDescriptionCompletedEvent<Product, TidSet> arg0) {
                 //do nothing
-                System.out.println("Descriptor changed");
+                log.info("Descriptor changed");
             }
 
             @Override
@@ -230,7 +222,7 @@ public class Application {
             }
         });
         dataset.forEach(detector);
-        System.out.println("Hello world");
+        log.info("Hello world");
     }
 
 
