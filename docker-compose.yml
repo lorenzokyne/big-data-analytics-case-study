@@ -1,7 +1,10 @@
 version: '3.9'
+volumes:
+  shared:
 services:
   spark-master:
     ports:
+      - "4040:4040"
       - "8080:8080"
     expose:
       - 7077
@@ -9,11 +12,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: 'bdacs'
+    volumes:
+      - shared:/opt/bitnami/spark/csv
   spark-worker:
     image: bitnami/spark:latest
     environment:
       - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://bdacs:7077
     expose:
       - 8081
     depends_on:
       - spark-master
+    volumes:
+      - shared:/opt/bitnami/spark/csv

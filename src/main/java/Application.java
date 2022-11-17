@@ -32,7 +32,7 @@ import static java.util.stream.Collectors.groupingBy;
 public class Application {
     public static void main(String[] args) throws IOException {
 
-        String filePath = "C:\\csv_tests\\complex_users.csv";
+        String filePath = "./csv/";
         String servicePath = "local";
         if (args.length > 0) {
             filePath = args[0];

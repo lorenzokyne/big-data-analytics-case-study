@@ -10,6 +10,6 @@ Please, follow this quick guide to correctly launch the project
 3. Open an other bash and use `docker exec -it bdacs bash` to open the master node bash
 3. It the master node bash run the following command to send data from CSV to elaborator:
 ```
-./bin/spark-submit --driver-memory 2g --executor-memory 2g --class Application --master spark://bdacs:7077 --conf spark.jars.ivy=/tmp/.ivy --name "BDA Case Study" climate-change.jar "./csv/" spark://bdacs:7077
+./bin/spark-submit --class Application --conf spark.jars.ivy=/tmp/.ivy --name "BDA Case Study" climate-change.jar "./csv/" spark://bdacs:7077
 ```
 4. Enjoy watch what happens on the UI :)
