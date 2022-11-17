@@ -13,7 +13,6 @@ public class MixedClimateJoiner implements Joiner<ClimateData> {
     public ClimateData apply(ClimateData p1, ClimateData p2, int length) {
         ClimateData result = p2;
         if (p1.getPrcp() == null || p2.getPrcp() == null)
-            if (p1.getAwnd() == null || p2.getAwnd() == null)
                 result = p1;
 
         return result;

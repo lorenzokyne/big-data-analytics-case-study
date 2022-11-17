@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-@JsonPropertyOrder({"station", "name", "date", "awnd", "prcp", "snow", "tmax", "tmin", "tobs"})
+@JsonPropertyOrder({"station", "name", "date", "prcp", "snow", "tmax", "tmin", "tobs"})
 public class ClimateData implements Comparable<ClimateData> {
     String station;
     String name;
@@ -16,7 +16,6 @@ public class ClimateData implements Comparable<ClimateData> {
     String tmax; //Celsius
     String tmin; //Celsius
     String tobs; //Celsius
-    String awnd; //mm
 
 
     public ClimateData(ClimateData data) {

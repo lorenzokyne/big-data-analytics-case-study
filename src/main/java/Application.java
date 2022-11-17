@@ -1,8 +1,17 @@
-import lombok.extern.slf4j.Slf4j;
-import lombok.var;
-import models.ClimateData;
-import models.Relevation;
-import org.apache.spark.sql.*;
+import static java.util.stream.Collectors.groupingBy;
+
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoder;
+import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.jetbrains.annotations.Nullable;
 import org.jkarma.mining.joiners.TidSet;
 import org.jkarma.mining.providers.TidSetProvider;
@@ -13,22 +22,20 @@ import org.jkarma.mining.windows.Windows;
 import org.jkarma.pbcd.descriptors.Descriptors;
 import org.jkarma.pbcd.detectors.Detectors;
 import org.jkarma.pbcd.detectors.PBCD;
-import org.jkarma.pbcd.events.*;
+import org.jkarma.pbcd.events.ChangeDescriptionCompletedEvent;
+import org.jkarma.pbcd.events.ChangeDescriptionStartedEvent;
+import org.jkarma.pbcd.events.ChangeDetectedEvent;
+import org.jkarma.pbcd.events.ChangeNotDetectedEvent;
+import org.jkarma.pbcd.events.PBCDEventListener;
+import org.jkarma.pbcd.events.PatternUpdateCompletedEvent;
+import org.jkarma.pbcd.events.PatternUpdateStartedEvent;
 import org.jkarma.pbcd.patterns.Patterns;
 import org.jkarma.pbcd.similarities.UnweightedJaccard;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.groupingBy;
+import lombok.var;
+import lombok.extern.slf4j.Slf4j;
+import models.ClimateData;
+import models.Relevation;
 
 @Slf4j
 public class Application {
@@ -52,7 +59,8 @@ public class Application {
 
         assert df != null;
         var result = df.groupBy("DATE").df().sort("DATE");
-        result = result.filter((result.col("AWND").isNotNull().and(result.col("TOBS").isNotNull())));
+        result = result.drop("AWND");
+        result = result.filter(result.col("TOBS").isNotNull());
 
         Stream<Relevation> dataset = prepareDataset(result);
 
@@ -80,19 +88,10 @@ public class Application {
 
     @Nullable
     private static Dataset<Row> readCsvFile(String filePath, SparkSession spark) throws IOException {
-        Dataset<Row> df = null;
-        for (Path path : Files.list(Paths.get(filePath)).collect(Collectors.toList())) {
-            var temp = spark.read().format("csv")
-                    .option("header", "true")
-                    .option("delimiter", ",")
-                    .option("inferSchema", "true").load(path.toString());
-            if (df == null) {
-                df = temp;
-            } else {
-                df = df.union(temp);
-            }
-        }
-        return df;
+        return spark.read().format("csv")
+        .option("header", "true")
+        .option("delimiter", ",")
+        .option("inferSchema", "true").load(filePath + "/*");
     }
 
     private static void detectChanges(PBCD<Relevation, ClimateData, TidSet, Boolean> detector) {
