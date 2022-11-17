@@ -1,8 +1,6 @@
 import lombok.extern.slf4j.Slf4j;
 import lombok.var;
 import models.ClimateData;
-import models.Product;
-import models.Purchase;
 import models.Relevation;
 import org.apache.spark.sql.*;
 import org.jkarma.mining.joiners.TidSet;
@@ -22,7 +20,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -155,7 +156,6 @@ public class Application {
         TidSetProvider<ClimateData> accessor = new TidSetProvider<>(model);
 
         //we instantiate the pattern language delegate
-        MixedProductJoiner language = new MixedProductJoiner();
         MixedClimateJoiner joiner = new MixedClimateJoiner();
         //we instantiate the mining strategy
         MiningStrategy<ClimateData, TidSet> strategy = Strategies.upon(joiner).eclat(minFreq).dfs(accessor);
@@ -164,100 +164,4 @@ public class Application {
         return Detectors.upon(strategy).unweighted((p, t) -> Patterns.isFrequent(p, minFreq, t), new UnweightedJaccard()).describe(Descriptors.partialEps(minFreq, 1.00)).build(minChange, blockSize);
     }
 
-    private void purchasesDetector() {
-        int blockSize = 6;
-        float minFreq = 0.25f;
-        float minChange = 0.5f;
-        Stream<Purchase> dataset = getRandomicDataset(60, 2, 5);
-
-        PBCD<Purchase, Product, TidSet, Boolean> detector = getPurchasePBCD(minFreq, minChange, blockSize);
-
-        detector.registerListener(new PBCDEventListener<Product, TidSet>() {
-
-            @Override
-            public void patternUpdateCompleted(PatternUpdateCompletedEvent<Product, TidSet> arg0) {
-                //do nothing
-                log.info("pattern updated " + arg0);
-            }
-
-            @Override
-            public void patternUpdateStarted(PatternUpdateStartedEvent<Product, TidSet> arg0) {
-                //do nothing
-                log.info("started");
-            }
-
-            @Override
-            public void changeDetected(ChangeDetectedEvent<Product, TidSet> event) {
-                log.info("change detected: " + event.getAmount());
-                log.info("\tdescribed by:");
-                event.getDescription().forEach(p -> {
-                    double freqReference = p.getFirstEval().getRelativeFrequency() * 100;
-                    double freqTarget = p.getSecondEval().getRelativeFrequency() * 100;
-
-                    String message;
-                    if (freqTarget > freqReference) {
-                        message = "increased frequency from ";
-                    } else {
-                        message = "decreased frequency from ";
-                    }
-                    message += Double.toString(freqReference) + "% to " + Double.toString(freqTarget) + "%";
-                    log.info("\t\t" + p.getItemSet() + " " + message);
-                });
-            }
-
-            @Override
-            public void changeNotDetected(ChangeNotDetectedEvent<Product, TidSet> arg0) {
-                log.info("change not detected: " + arg0.getAmount());
-            }
-
-            @Override
-            public void changeDescriptionCompleted(ChangeDescriptionCompletedEvent<Product, TidSet> arg0) {
-                //do nothing
-                log.info("Descriptor changed");
-            }
-
-            @Override
-            public void changeDescriptionStarted(ChangeDescriptionStartedEvent<Product, TidSet> arg0) {
-                //do nothing
-            }
-        });
-        dataset.forEach(detector);
-        log.info("Hello world");
-    }
-
-
-    public static PBCD<Purchase, Product, TidSet, Boolean> getPurchasePBCD(float minFreq, float minChange,
-                                                                           int blockSize) {
-        //we prepare the time window model and the data accessor
-        WindowingStrategy<TidSet> model = Windows.blockwiseSliding();
-        TidSetProvider<Product> accessor = new TidSetProvider<>(model);
-
-        //we instantiate the pattern language delegate
-        MixedProductJoiner language = new MixedProductJoiner();
-
-        //we instantiate the mining strategy
-        MiningStrategy<Product, TidSet> strategy = Strategies.upon(language).eclat(minFreq).dfs(accessor);
-
-        //we assemble the PBCD
-        return Detectors.upon(strategy).unweighted((p, t) -> Patterns.isFrequent(p, minFreq, t), new UnweightedJaccard()).describe(Descriptors.partialEps(minFreq, 1.00)).build(minChange, blockSize);
-    }
-
-    public static Stream<Purchase> getRandomicDataset(int purchaseNum, int purchaseMinProducts,
-                                                      int purchaseMaxProducts) {
-        List<Purchase> result = new ArrayList<>();
-        for (int i = 0; i < purchaseNum; i++) {
-            int randomItemNumber = (int) (Math.random() * (purchaseMaxProducts - purchaseMinProducts + 1)) + purchaseMinProducts;
-            Purchase next = new Purchase();
-            for (int j = 0; j < randomItemNumber; j++) {
-                if (!next.products.add(new Product(Product.getRandomicName()))) j--;
-            }
-            result.add(next);
-        }
-        result.forEach(System.out::println);
-        return result.stream();
-    }
-
-    public static Stream<Purchase> getDataset() {
-        return Stream.of(new Purchase(Product.SUGAR, Product.WINE, Product.BREAD), new Purchase(Product.WINE, Product.BREAD), new Purchase(Product.CAKE, Product.BREAD), new Purchase(Product.CAKE, Product.WINE), new Purchase(Product.CAKE, Product.WINE, Product.BREAD), new Purchase(Product.CAKE, Product.SUGAR, Product.WINE), new Purchase(Product.WINE, Product.SUGAR), new Purchase(Product.WINE, Product.CAKE), new Purchase(Product.CAKE, Product.JUICE, Product.BREAD), new Purchase(Product.CAKE, Product.JUICE, Product.BREAD), new Purchase(Product.JUICE, Product.BREAD), new Purchase(Product.JUICE, Product.SUGAR), new Purchase(Product.JUICE, Product.SUGAR, Product.CAKE), new Purchase(Product.CAKE, Product.BREAD), new Purchase(Product.JUICE, Product.CAKE, Product.BREAD), new Purchase(Product.JUICE, Product.BREAD, Product.SUGAR));
-    }
 }
