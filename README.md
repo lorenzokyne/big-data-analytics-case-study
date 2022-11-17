@@ -1,10 +1,15 @@
-# big-data-analytics-case-study
-Big Data Analytics - Case study - Capocchiano Lorenzo & Narracci Domenico
+# Big Data Analytics - Case study 
+### Computer Science - Knowledge Engineering and Machine Intelligence
+### Authors: Capocchiano Lorenzo & Narracci Domenico<br><br>
+## Run Project Guide
+Please, follow this quick guide to correctly launch the project
 
-In the project folder
-1. Execute in command bash "docker-compose up --scale spark-worker=[num of workers]"
-
+0. Open the bash
+1. Execute the command `docker-compose up --scale spark-worker=<num of workers>` to build containers and launch a master node and N workers
 2. Navigate to <a>http://localhost:8080</a> for the SPARK UI
-
-In the master bash:<br>
-3. Launch "./bin/spark-submit --driver-memory 2g --executor-memory 2g --class Application --master spark://bdacs:7077 --conf spark.jars.ivy=/tmp/.ivy --name "BDA Case Study" climate-change.jar "./csv/" spark://bdacs:7077"
+3. Open an other bash and use `docker exec -it bdacs bash` to open the master node bash
+3. It the master node bash run the following command to send data from CSV to elaborator:
+```
+./bin/spark-submit --driver-memory 2g --executor-memory 2g --class Application --master spark://bdacs:7077 --conf spark.jars.ivy=/tmp/.ivy --name "BDA Case Study" climate-change.jar "./csv/" spark://bdacs:7077
+```
+4. Enjoy watch what happens on the UI :)
