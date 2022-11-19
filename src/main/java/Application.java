@@ -1,10 +1,7 @@
 import static java.util.stream.Collectors.groupingBy;
 
 import java.io.IOException;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 import org.apache.spark.sql.Dataset;
@@ -89,9 +86,11 @@ public class Application {
     @Nullable
     private static Dataset<Row> readCsvFile(String filePath, SparkSession spark) throws IOException {
         return spark.read().format("csv")
-        .option("header", "true")
-        .option("delimiter", ",")
-        .option("inferSchema", "true").load(filePath + "/*");
+                .option("header", "true")
+                .option("delimiter", ",")
+                .option("inferSchema", "true")
+                .option("enforceSchema","false")
+                .load(filePath + "/*");
     }
 
     private static void detectChanges(PBCD<Relevation, ClimateData, TidSet, Boolean> detector) {
@@ -100,6 +99,11 @@ public class Application {
             @Override
             public void patternUpdateCompleted(PatternUpdateCompletedEvent<ClimateData, TidSet> arg0) {
                 //do nothing
+                var iterator = arg0.getLatestBlock().iterator();
+                while (iterator.hasNext()) {
+                    Collection<ClimateData> items = iterator.next().getItems();
+                    items.forEach(System.out::println);
+                }
                 log.info("pattern updated " + arg0);
             }
 
