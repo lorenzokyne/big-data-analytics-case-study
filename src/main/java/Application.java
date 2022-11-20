@@ -1,14 +1,8 @@
-import static java.util.stream.Collectors.groupingBy;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Stream;
-
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoder;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+import models.ClimateData;
+import models.Relevation;
+import org.apache.spark.sql.*;
 import org.jetbrains.annotations.Nullable;
 import org.jkarma.mining.joiners.TidSet;
 import org.jkarma.mining.providers.TidSetProvider;
@@ -19,23 +13,20 @@ import org.jkarma.mining.windows.Windows;
 import org.jkarma.pbcd.descriptors.Descriptors;
 import org.jkarma.pbcd.detectors.Detectors;
 import org.jkarma.pbcd.detectors.PBCD;
-import org.jkarma.pbcd.events.ChangeDescriptionCompletedEvent;
-import org.jkarma.pbcd.events.ChangeDescriptionStartedEvent;
-import org.jkarma.pbcd.events.ChangeDetectedEvent;
-import org.jkarma.pbcd.events.ChangeNotDetectedEvent;
-import org.jkarma.pbcd.events.PBCDEventListener;
-import org.jkarma.pbcd.events.PatternUpdateCompletedEvent;
-import org.jkarma.pbcd.events.PatternUpdateStartedEvent;
+import org.jkarma.pbcd.events.*;
 import org.jkarma.pbcd.patterns.Patterns;
 import org.jkarma.pbcd.similarities.UnweightedJaccard;
 
-import lombok.var;
-import lombok.extern.slf4j.Slf4j;
-import models.ClimateData;
-import models.Relevation;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.groupingBy;
 
 @Slf4j
 public class Application {
+    private static boolean debugPattern = false;
+
     public static void main(String[] args) throws IOException {
 
         String filePath = "./csv/";
@@ -44,6 +35,9 @@ public class Application {
             filePath = args[0];
             if (args.length > 1) {
                 servicePath = args[1];
+            }
+            if (args.length > 2) {
+                debugPattern = Boolean.parseBoolean(args[2]);
             }
         }
         SparkSession spark = SparkSession
@@ -61,9 +55,9 @@ public class Application {
 
         Stream<Relevation> dataset = prepareDataset(result);
 
-        int blockSize = 25;
+        int blockSize = 10;
         float minFreq = 0.25f;
-        float minChange = 0.3f;
+        float minChange = 0.4f;
         PBCD<Relevation, ClimateData, TidSet, Boolean> detector = getPBCD(minFreq, minChange, blockSize);
 
         detectChanges(detector);
@@ -89,7 +83,6 @@ public class Application {
                 .option("header", "true")
                 .option("delimiter", ",")
                 .option("inferSchema", "true")
-                .option("enforceSchema","false")
                 .load(filePath + "/*");
     }
 
@@ -98,13 +91,14 @@ public class Application {
 
             @Override
             public void patternUpdateCompleted(PatternUpdateCompletedEvent<ClimateData, TidSet> arg0) {
-                //do nothing
-                var iterator = arg0.getLatestBlock().iterator();
-                while (iterator.hasNext()) {
-                    Collection<ClimateData> items = iterator.next().getItems();
-                    items.forEach(System.out::println);
+                if (debugPattern) {
+                    log.info("pattern updated " + arg0);
+                    for (org.jkarma.model.Transaction<ClimateData> climateData : arg0.getLatestBlock()) {
+                        Collection<ClimateData> items = climateData.getItems();
+                        items.forEach(System.out::println);
+                    }
+                    log.info("pattern details finished");
                 }
-                log.info("pattern updated " + arg0);
             }
 
             @Override
