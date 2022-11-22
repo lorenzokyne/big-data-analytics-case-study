@@ -2,6 +2,8 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.var;
 import models.ClimateData;
 import models.Relevation;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.*;
 import org.jetbrains.annotations.Nullable;
 import org.jkarma.mining.joiners.TidSet;
@@ -19,7 +21,9 @@ import org.jkarma.pbcd.similarities.UnweightedJaccard;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.groupingBy;
 
@@ -47,14 +51,13 @@ public class Application {
                 .getOrCreate();
 
         Dataset<Row> df = readCsvFile(filePath, spark);
-
         assert df != null;
         var result = df.groupBy("DATE").df().sort("DATE");
         result = result.drop("AWND");
         result = result.filter(result.col("TOBS").isNotNull());
 
-        Stream<Relevation> dataset = prepareDataset(result);
-
+        JavaRDD<Relevation> dataset = prepareDataset(result);
+        dataset.saveAsTextFile("C:\\Spark\\test2");
         int blockSize = 10;
         float minFreq = 0.25f;
         float minChange = 0.4f;
@@ -62,19 +65,17 @@ public class Application {
 
         detectChanges(detector);
         try {
-            dataset.forEach(detector);
+            dataset.collect().forEach(detector);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static Stream<Relevation> prepareDataset(Dataset<Row> result) {
+
+    private static JavaRDD<Relevation> prepareDataset(Dataset<Row> result) {
         Encoder<ClimateData> personEncoder = Encoders.bean(ClimateData.class);
         Dataset<ClimateData> climateDataset = result.as(personEncoder);
-
-        List<ClimateData> complexUsers = climateDataset.collectAsList();
-
-        return generateRelevationDataset(complexUsers);
+        return generateRelevationDataset2(climateDataset);
     }
 
     @Nullable
@@ -153,6 +154,13 @@ public class Application {
         });
 
         return result.stream();
+    }
+
+    private static JavaRDD<Relevation> generateRelevationDataset2(Dataset<ClimateData> climateDataset) {
+        JavaRDD<ClimateData> javaRDD = climateDataset.toJavaRDD();
+        JavaPairRDD<String, Iterable<ClimateData>> stringIterableJavaPairRDD = javaRDD.groupBy(ClimateData::getDate).sortByKey();
+        return stringIterableJavaPairRDD.map(el ->
+                (new Relevation(StreamSupport.stream(el._2.spliterator(), false).sorted(Comparator.comparing(ClimateData::getDate)).collect(Collectors.toList()))));
     }
 
     public static PBCD<Relevation, ClimateData, TidSet, Boolean> getPBCD(float minFreq, float minChange,
