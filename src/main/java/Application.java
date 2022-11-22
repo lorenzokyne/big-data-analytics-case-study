@@ -57,7 +57,7 @@ public class Application {
         result = result.filter(result.col("TOBS").isNotNull());
 
         JavaRDD<Relevation> dataset = prepareDataset(result);
-        dataset.saveAsTextFile("C:\\Spark\\test2");
+        // dataset.saveAsTextFile("C:\\Spark\\test2");
         int blockSize = 10;
         float minFreq = 0.25f;
         float minChange = 0.4f;
@@ -65,7 +65,7 @@ public class Application {
 
         detectChanges(detector);
         try {
-            dataset.collect().forEach(detector);
+            dataset.collect().stream().forEach(detector);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -73,8 +73,7 @@ public class Application {
 
 
     private static JavaRDD<Relevation> prepareDataset(Dataset<Row> result) {
-        Encoder<ClimateData> personEncoder = Encoders.bean(ClimateData.class);
-        Dataset<ClimateData> climateDataset = result.as(personEncoder);
+        Dataset<ClimateData> climateDataset = result.as(Encoders.bean(ClimateData.class));
         return generateRelevationDataset2(climateDataset);
     }
 
@@ -160,7 +159,7 @@ public class Application {
         JavaRDD<ClimateData> javaRDD = climateDataset.toJavaRDD();
         JavaPairRDD<String, Iterable<ClimateData>> stringIterableJavaPairRDD = javaRDD.groupBy(ClimateData::getDate).sortByKey();
         return stringIterableJavaPairRDD.map(el ->
-                (new Relevation(StreamSupport.stream(el._2.spliterator(), false).sorted(Comparator.comparing(ClimateData::getDate)).collect(Collectors.toList()))));
+                (new Relevation(StreamSupport.stream(el._2.spliterator(), false).collect(Collectors.toList()))));
     }
 
     public static PBCD<Relevation, ClimateData, TidSet, Boolean> getPBCD(float minFreq, float minChange,

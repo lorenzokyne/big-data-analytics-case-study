@@ -3,6 +3,8 @@ package models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.*;
+import scala.Serializable;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.text.SimpleDateFormat;
@@ -10,16 +12,16 @@ import java.util.Comparator;
 
 @Data
 @NoArgsConstructor
-@JsonPropertyOrder({"station", "name", "date", "prcp", "snow", "tmax", "tmin", "tobs"})
-public class ClimateData implements Comparable<ClimateData> {
+@JsonPropertyOrder({ "station", "name", "date", "prcp", "snow", "tmax", "tmin", "tobs" })
+public class ClimateData implements Comparable<ClimateData>, Serializable {
     String station;
     String name;
     String date;
-    String prcp; //mm
-    String snow; //mm
-    String tmax; //Celsius
-    String tmin; //Celsius
-    String tobs; //Celsius
+    String prcp; // mm
+    String snow; // mm
+    String tmax; // Celsius
+    String tmin; // Celsius
+    String tobs; // Celsius
     @JsonIgnore
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
