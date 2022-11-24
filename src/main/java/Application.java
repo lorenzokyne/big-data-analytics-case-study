@@ -71,9 +71,11 @@ public class Application {
         }
     }
 
-
     private static JavaRDD<Relevation> prepareDataset(Dataset<Row> result) {
         Dataset<ClimateData> climateDataset = result.as(Encoders.bean(ClimateData.class));
+        climateDataset.foreach(cd -> {
+            cd.formatDate(cd.getDate());
+        });
         return generateRelevationDataset2(climateDataset);
     }
 
@@ -103,7 +105,7 @@ public class Application {
 
             @Override
             public void patternUpdateStarted(PatternUpdateStartedEvent<ClimateData, TidSet> arg0) {
-                //do nothing
+                // do nothing
                 log.info("started");
             }
 
@@ -133,13 +135,13 @@ public class Application {
 
             @Override
             public void changeDescriptionCompleted(ChangeDescriptionCompletedEvent<ClimateData, TidSet> arg0) {
-                //do nothing
+                // do nothing
                 log.info("Descriptor changed");
             }
 
             @Override
             public void changeDescriptionStarted(ChangeDescriptionStartedEvent<ClimateData, TidSet> arg0) {
-                //do nothing
+                // do nothing
             }
         });
     }
@@ -157,24 +159,27 @@ public class Application {
 
     private static JavaRDD<Relevation> generateRelevationDataset2(Dataset<ClimateData> climateDataset) {
         JavaRDD<ClimateData> javaRDD = climateDataset.toJavaRDD();
-        JavaPairRDD<String, Iterable<ClimateData>> stringIterableJavaPairRDD = javaRDD.groupBy(ClimateData::getDate).sortByKey();
-        return stringIterableJavaPairRDD.map(el ->
-                (new Relevation(StreamSupport.stream(el._2.spliterator(), false).collect(Collectors.toList()))));
+        JavaPairRDD<String, Iterable<ClimateData>> stringIterableJavaPairRDD = javaRDD.groupBy(ClimateData::getDate)
+                .sortByKey();
+        return stringIterableJavaPairRDD.map(
+                el -> (new Relevation(StreamSupport.stream(el._2.spliterator(), false).collect(Collectors.toList()))));
     }
 
     public static PBCD<Relevation, ClimateData, TidSet, Boolean> getPBCD(float minFreq, float minChange,
-                                                                         int blockSize) {
-        //we prepare the time window model and the data accessor
+            int blockSize) {
+        // we prepare the time window model and the data accessor
         WindowingStrategy<TidSet> model = Windows.blockwiseSliding();
         TidSetProvider<ClimateData> accessor = new TidSetProvider<>(model);
 
-        //we instantiate the pattern language delegate
+        // we instantiate the pattern language delegate
         MixedClimateJoiner joiner = new MixedClimateJoiner();
-        //we instantiate the mining strategy
+        // we instantiate the mining strategy
         MiningStrategy<ClimateData, TidSet> strategy = Strategies.upon(joiner).eclat(minFreq).dfs(accessor);
 
-        //we assemble the PBCD
-        return Detectors.upon(strategy).unweighted((p, t) -> Patterns.isFrequent(p, minFreq, t), new UnweightedJaccard()).describe(Descriptors.partialEps(minFreq, 1.00)).build(minChange, blockSize);
+        // we assemble the PBCD
+        return Detectors.upon(strategy)
+                .unweighted((p, t) -> Patterns.isFrequent(p, minFreq, t), new UnweightedJaccard())
+                .describe(Descriptors.partialEps(minFreq, 1.00)).build(minChange, blockSize);
     }
 
 }

@@ -32,23 +32,27 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
             .thenComparing(ClimateData::getPrcp, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(ClimateData::getSnow, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(ClimateData::getTmin, Comparator.nullsFirst(Comparator.naturalOrder()))
-            .thenComparing(ClimateData::getTmax, Comparator.nullsFirst(Comparator.naturalOrder()));
+            .thenComparing(ClimateData::getTmax, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(ClimateData::getTobs, Comparator.nullsFirst(Comparator.naturalOrder()));
 
     public ClimateData(ClimateData data) {
-        try {
-            SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            var date = parser.parse(data.date);
-            parser = new java.text.SimpleDateFormat("MMMM");
-            this.date = parser.format(date);
-        } catch (Exception e) {
-            this.date = data.date;
-        }
-
+        this.formatDate(data.date);
         this.prcp = data.prcp;
         this.snow = data.snow;
         this.tmax = data.tmax;
         this.tmin = data.tmin;
         this.tobs = data.tobs;
+    }
+
+    public void formatDate(String newData) {
+        try {
+            SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            var date = parser.parse(newData);
+            parser = new java.text.SimpleDateFormat("MMMM");
+            this.date = parser.format(date);
+        } catch (Exception e) {
+            this.date = newData;
+        }
     }
 
     @Override
