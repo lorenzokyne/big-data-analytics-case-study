@@ -12,23 +12,24 @@ import java.util.Comparator;
 
 @Data
 @NoArgsConstructor
-@JsonPropertyOrder({ "station", "name", "date", "prcp", "snow", "tmax", "tmin", "tobs" })
+@JsonPropertyOrder({ "station", "name", "date", "prcp", "snow", "tmax", "tmin", "tobs", "period" })
 public class ClimateData implements Comparable<ClimateData>, Serializable {
     String station;
     String name;
     String date;
-    String prcp; // mm
-    String snow; // mm
-    String tmax; // Celsius
-    String tmin; // Celsius
-    String tobs; // Celsius
+    Double prcp; // mm
+    Double snow; // mm
+    Double tmax; // Celsius
+    Double tmin; // Celsius
+    Double tobs; // Celsius
+    String period;
     @JsonIgnore
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     @ToString.Exclude
     public boolean samePeriod = false;
 
-    private static Comparator<ClimateData> comparator = Comparator.comparing(ClimateData::getDate)
+    private static Comparator<ClimateData> comparator = Comparator.comparing(ClimateData::getPeriod)
             .thenComparing(ClimateData::getPrcp, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(ClimateData::getSnow, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(ClimateData::getTmin, Comparator.nullsFirst(Comparator.naturalOrder()))
@@ -36,7 +37,8 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
             .thenComparing(ClimateData::getTobs, Comparator.nullsFirst(Comparator.naturalOrder()));
 
     public ClimateData(ClimateData data) {
-        this.formatDate(data.date);
+        this.formatPeriod(data.period);
+        this.date = data.date;
         this.prcp = data.prcp;
         this.snow = data.snow;
         this.tmax = data.tmax;
@@ -44,14 +46,14 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
         this.tobs = data.tobs;
     }
 
-    public void formatDate(String newData) {
+    public void formatPeriod(String newData) {
         try {
             SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             var date = parser.parse(newData);
             parser = new java.text.SimpleDateFormat("MMMM");
-            this.date = parser.format(date);
+            this.period = parser.format(date);
         } catch (Exception e) {
-            this.date = newData;
+            this.period = newData;
         }
     }
 

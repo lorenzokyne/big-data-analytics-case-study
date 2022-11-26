@@ -37,6 +37,6 @@ public class MixedClimateJoiner implements Joiner<ClimateData> {
 
     //same period is intended as same month of the year
     private boolean areSamePeriod(ClimateData c1, ClimateData c2) {
-        return c1.getDate().equals(c2.getDate());
+        return c1.getPeriod().equals(c2.getPeriod());
     }
 }
