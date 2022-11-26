@@ -1,7 +1,9 @@
+import lombok.extern.slf4j.Slf4j;
 import models.ClimateData;
 import org.jkarma.mining.joiners.Joiner;
 import org.jkarma.mining.providers.Context;
 
+@Slf4j
 public class MixedClimateJoiner implements Joiner<ClimateData> {
 
     @Override
@@ -10,11 +12,17 @@ public class MixedClimateJoiner implements Joiner<ClimateData> {
     }
 
     @Override
-    public ClimateData apply(ClimateData p1, ClimateData p2, int length) {
-        ClimateData result = p2;
-        if (p1.getPrcp() == null || p2.getPrcp() == null)
-                result = p1;
-
+    public ClimateData apply(ClimateData c1, ClimateData c2, int length) {
+        ClimateData result = new ClimateData(c2);
+        if (c1.samePeriod && c2.samePeriod) {
+            if (length > 1) {
+                result.samePeriod = this.areSamePeriod(c1, c2);
+            } else {
+                result.samePeriod = true;
+            }
+        } else {
+            result.samePeriod = this.areSamePeriod(c1, c2);
+        }
         return result;
     }
 
@@ -25,5 +33,10 @@ public class MixedClimateJoiner implements Joiner<ClimateData> {
             result = p.getPrcp() != null;
         }
         return result;
+    }
+
+    //same period is intended as same month of the year
+    private boolean areSamePeriod(ClimateData c1, ClimateData c2) {
+        return c1.getPeriod().equals(c2.getPeriod());
     }
 }

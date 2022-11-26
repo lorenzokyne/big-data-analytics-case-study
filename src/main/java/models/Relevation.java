@@ -2,14 +2,23 @@ package models;
 
 import org.jkarma.model.Transaction;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class Relevation implements Transaction<ClimateData> {
+public class Relevation implements Serializable, Transaction<ClimateData> {
     private static int lastTid = 0;
 
+    @Override
+    public String toString() {
+        return "Relevation{" +
+                "tid=" + tid +
+                ", timestamp=" + timestamp +
+                ", reads=" + reads +
+                '}';
+    }
 
     public int tid;
     public Instant timestamp;
