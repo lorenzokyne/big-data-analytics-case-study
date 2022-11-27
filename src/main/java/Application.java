@@ -51,8 +51,11 @@ public class Application {
                 .appName("BDA - Case Study - Capocchiano Narracci: Climate Change Detection")
                 .getOrCreate();
 
-        Dataset<Row> df = readCsvFile(filePath, spark);
-        assert df != null;
+        Dataset<Row> df = spark.read().format("csv")
+                .option("header", "true")
+                .option("delimiter", ",")
+                .option("inferSchema", "true")
+                .csv(filePath + "/*");
         var result = df.drop("AWND");
         result = result.drop("AWND");
         Column col = result.col("DATE");
@@ -88,7 +91,7 @@ public class Application {
                 .option("header", "true")
                 .option("delimiter", ",")
                 .option("inferSchema", "true")
-                .load(filePath + "/*");
+                .csv(filePath + "/*");
     }
 
     private static void detectChanges(PBCD<Relevation, ClimateData, TidSet, Boolean> detector) {
