@@ -18,6 +18,6 @@ mvn install:install-file -Dfile="src/main/resources/jkarma-1.0.0.jar" -DgroupId=
 3. Open an other bash and use `docker exec -it bdacs bash` to open the master node bash
 4. It the master node bash run the following command to send data from CSV to elaborator:
 ```
-./bin/spark-submit --class Application --conf spark.jars.ivy=/tmp/.ivy --conf spark.executor.cores=2 --conf spark.driver.cores=4 --conf spark.cores.max=4 --name "BDA Case Study" climate-change.jar "./csv/" spark://bdacs:7077
+./bin/spark-submit --class Application --conf spark.jars.ivy=/tmp/.ivy --conf spark.executor.cores=1 --conf spark.driver.cores=3 --conf spark.cores.max=3 --name "BDA Case Study" climate-change.jar "./csv/" spark://bdacs:7077
 ```
 5. Enjoy watch what happens on the UI :)
