@@ -3,16 +3,15 @@ package models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.*;
-import scala.Serializable;
-
 import org.jetbrains.annotations.NotNull;
+import scala.Serializable;
 
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
 
 @Data
 @NoArgsConstructor
-@JsonPropertyOrder({ "station", "name", "date", "prcp", "snow", "tmax", "tmin", "tobs", "period" })
+@JsonPropertyOrder({"station", "name", "date", "prcp", "snow", "tmax", "tmin", "tobs", "period"})
 public class ClimateData implements Comparable<ClimateData>, Serializable {
     String station;
     String name;
@@ -46,19 +45,34 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
         this.tobs = data.tobs;
     }
 
-    public void formatPeriod(String newData) {
+    public void formatPeriod(String newDate) {
         try {
             SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            var date = parser.parse(newData);
+            var date = parser.parse(newDate);
             parser = new java.text.SimpleDateFormat("MMMM");
             this.period = parser.format(date);
         } catch (Exception e) {
-            this.period = newData;
+            this.period = newDate;
         }
     }
 
     @Override
     public int compareTo(@NotNull ClimateData o) {
         return comparator.compare(this, o);
+    }
+
+    @SneakyThrows
+    @Override
+    public String toString() {
+        SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        var formattedDate = parser.parse(date);
+        parser = new java.text.SimpleDateFormat("dd-MM-yyyy");
+        return "date=" + parser.format(formattedDate) +
+                ", prcp=" + prcp + " mm" +
+                ", snow=" + snow + " mm" +
+                ", tmax=" + tmax + "°C" +
+                ", tmin=" + tmin + "°C" +
+                ", tobs=" + tobs + "°C" +
+                ", period=" + period;
     }
 }
