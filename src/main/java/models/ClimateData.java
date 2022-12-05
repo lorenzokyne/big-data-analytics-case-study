@@ -28,8 +28,8 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
     @ToString.Exclude
     public boolean samePeriod = false;
 
-    private static Comparator<ClimateData> comparator = Comparator.comparing(ClimateData::getPeriod)
-            .thenComparing(ClimateData::getPrcp, Comparator.nullsFirst(Comparator.naturalOrder()))
+    private static Comparator<ClimateData> comparator = Comparator.
+            comparing(ClimateData::getPrcp, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(ClimateData::getSnow, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(ClimateData::getTmin, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(ClimateData::getTmax, Comparator.nullsFirst(Comparator.naturalOrder()))
@@ -49,7 +49,7 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
         try {
             SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             var date = parser.parse(newDate);
-            parser = new java.text.SimpleDateFormat("MMMM");
+            parser = new java.text.SimpleDateFormat("MM");
             this.period = parser.format(date);
         } catch (Exception e) {
             this.period = newDate;
@@ -67,8 +67,7 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
         SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         var formattedDate = parser.parse(date);
         parser = new java.text.SimpleDateFormat("dd-MM-yyyy");
-        return "date=" + parser.format(formattedDate) +
-                ", prcp=" + prcp + " mm" +
+        return "prcp=" + prcp + " mm" +
                 ", snow=" + snow + " mm" +
                 ", tmax=" + tmax + "°C" +
                 ", tmin=" + tmin + "°C" +

@@ -62,22 +62,37 @@ public class Application {
         result = result.withColumn("PERIOD", col);
         result = result.filter(result.col("TOBS").isNotNull());
         result = result.groupBy("DATE").df().sort("DATE");
-        JavaRDD<Relevation> dataset = prepareDataset(result);
+        JavaPairRDD<String, Iterable<Relevation>> datasets = prepareDataset(result);
         //dataset.saveAsTextFile("C:\\Spark\\test2");
-        int blockSize = 20;
         float minFreq = 0.25f;
-        float minChange = 0.4f;
-        PBCD<Relevation, ClimateData, TidSet, Boolean> detector = getPBCD(minFreq, minChange, blockSize);
-
-        detectChanges(detector);
+        float minChange = 0.2f;
         try {
-            dataset.collect().forEach(detector);
+            datasets.foreach(el -> {
+                log.info("Starting new PBCD on period: " + el._1);
+                int blockSize = 31;
+                switch (el._1) {
+                    case "04":
+                    case "06":
+                    case "09":
+                    case "11":
+                        blockSize = 30;
+                        break;
+                    case "02":
+                        blockSize = 28;
+                        break;
+                    default:
+                        break;
+                }
+                PBCD<Relevation, ClimateData, TidSet, Boolean> detector = getPBCD(minFreq, minChange, blockSize);
+                detectChanges(detector);
+                el._2.forEach(detector);
+            });
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static JavaRDD<Relevation> prepareDataset(Dataset<Row> result) {
+    private static JavaPairRDD<String, Iterable<Relevation>> prepareDataset(Dataset<Row> result) {
         Dataset<ClimateData> climateDataset = result.as(Encoders.bean(ClimateData.class));
         climateDataset.foreach(cd -> {
             cd.formatPeriod(cd.getPeriod());
@@ -103,7 +118,7 @@ public class Application {
                     log.info("pattern updated " + arg0);
                     for (org.jkarma.model.Transaction<ClimateData> climateData : arg0.getLatestBlock()) {
                         Collection<ClimateData> items = climateData.getItems();
-                        items.forEach(System.out::println);
+                        items.forEach(el -> log.info("{}", el));
                     }
                     log.info("pattern details finished");
                 }
@@ -163,11 +178,12 @@ public class Application {
         return result.stream();
     }
 
-    private static JavaRDD<Relevation> generateRelevationDataset2(Dataset<ClimateData> climateDataset) {
+    private static JavaPairRDD<String, Iterable<Relevation>> generateRelevationDataset2(Dataset<ClimateData> climateDataset) {
         JavaRDD<ClimateData> javaRDD = climateDataset.sort("DATE").toJavaRDD();
         JavaPairRDD<String, Iterable<ClimateData>> stringIterableJavaPairRDD = javaRDD.groupBy(ClimateData::getDate).sortByKey();
-        return stringIterableJavaPairRDD.map(
+        JavaRDD<Relevation> ungroupedDataset = stringIterableJavaPairRDD.map(
                 el -> (new Relevation(StreamSupport.stream(el._2.spliterator(), false).collect(Collectors.toList()))));
+        return ungroupedDataset.groupBy(rel -> rel.reads.stream().findFirst().get().getPeriod(), ungroupedDataset.getNumPartitions()).sortByKey();
     }
 
     public static PBCD<Relevation, ClimateData, TidSet, Boolean> getPBCD(float minFreq, float minChange,
@@ -181,7 +197,7 @@ public class Application {
         // we instantiate the mining strategy
         AreaHeuristic<ClimateData, TidSet> areaHeuristic = new AreaHeuristic<>();
         int k = 3;
-        MiningStrategy<ClimateData, TidSet> strategy = Strategies.upon(joiner).eclat(minFreq).beam(accessor, areaHeuristic, k);
+        MiningStrategy<ClimateData, TidSet> strategy = Strategies.upon(joiner).eclat(minFreq).dfs(accessor);
         // we assemble the PBCD
         return Detectors.upon(strategy)
                 .unweighted((p, t) -> Patterns.isFrequent(p, minFreq, t), new UnweightedJaccard())
