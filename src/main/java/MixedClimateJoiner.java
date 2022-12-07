@@ -1,9 +1,9 @@
-import lombok.extern.slf4j.Slf4j;
-import models.ClimateData;
 import org.jkarma.mining.joiners.Joiner;
 import org.jkarma.mining.providers.Context;
 
-@Slf4j
+import models.ClimateData;
+
+
 public class MixedClimateJoiner implements Joiner<ClimateData> {
 
     @Override

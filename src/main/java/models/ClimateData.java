@@ -64,9 +64,6 @@ public class ClimateData implements Comparable<ClimateData>, Serializable {
     @SneakyThrows
     @Override
     public String toString() {
-        SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        var formattedDate = parser.parse(date);
-        parser = new java.text.SimpleDateFormat("dd-MM-yyyy");
         return "prcp=" + prcp + " mm" +
                 ", snow=" + snow + " mm" +
                 ", tmax=" + tmax + "°C" +

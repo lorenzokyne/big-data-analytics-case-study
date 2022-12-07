@@ -1,12 +1,16 @@
-import lombok.extern.slf4j.Slf4j;
-import lombok.var;
-import models.ClimateData;
-import models.Relevation;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.sql.*;
+import org.apache.spark.sql.Column;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.jetbrains.annotations.Nullable;
-import org.jkarma.mining.heuristics.AreaHeuristic;
 import org.jkarma.mining.joiners.TidSet;
 import org.jkarma.mining.providers.TidSetProvider;
 import org.jkarma.mining.structures.MiningStrategy;
@@ -16,17 +20,20 @@ import org.jkarma.mining.windows.Windows;
 import org.jkarma.pbcd.descriptors.Descriptors;
 import org.jkarma.pbcd.detectors.Detectors;
 import org.jkarma.pbcd.detectors.PBCD;
-import org.jkarma.pbcd.events.*;
+import org.jkarma.pbcd.events.ChangeDescriptionCompletedEvent;
+import org.jkarma.pbcd.events.ChangeDescriptionStartedEvent;
+import org.jkarma.pbcd.events.ChangeDetectedEvent;
+import org.jkarma.pbcd.events.ChangeNotDetectedEvent;
+import org.jkarma.pbcd.events.PBCDEventListener;
+import org.jkarma.pbcd.events.PatternUpdateCompletedEvent;
+import org.jkarma.pbcd.events.PatternUpdateStartedEvent;
 import org.jkarma.pbcd.patterns.Patterns;
 import org.jkarma.pbcd.similarities.UnweightedJaccard;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import static java.util.stream.Collectors.groupingBy;
+import lombok.var;
+import lombok.extern.slf4j.Slf4j;
+import models.ClimateData;
+import models.Relevation;
 
 @Slf4j
 public class Application {
@@ -63,32 +70,34 @@ public class Application {
         result = result.filter(result.col("TOBS").isNotNull());
         result = result.groupBy("DATE").df().sort("DATE");
         JavaPairRDD<String, Iterable<Relevation>> datasets = prepareDataset(result);
-        //dataset.saveAsTextFile("C:\\Spark\\test2");
+        // dataset.saveAsTextFile("C:\\Spark\\test2");
         float minFreq = 0.25f;
         float minChange = 0.2f;
+
         try {
-            datasets.foreach(el -> {
+            datasets.collect().forEach(el -> {
                 log.info("Starting new PBCD on period: " + el._1);
-                int blockSize = 31;
-                switch (el._1) {
-                    case "04":
-                    case "06":
-                    case "09":
-                    case "11":
-                        blockSize = 30;
-                        break;
-                    case "02":
-                        blockSize = 28;
-                        break;
-                    default:
-                        break;
-                }
+                int blockSize = getDaysOfMonth(el._1);
                 PBCD<Relevation, ClimateData, TidSet, Boolean> detector = getPBCD(minFreq, minChange, blockSize);
                 detectChanges(detector);
                 el._2.forEach(detector);
             });
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error during Change Detection", e);
+        }
+    }
+
+    private static int getDaysOfMonth(String month) {
+        switch (month) {
+            case "04":
+            case "06":
+            case "09":
+            case "11":
+                return 30;
+            case "02":
+                return 28;
+            default:
+                return 31;
         }
     }
 
@@ -97,7 +106,7 @@ public class Application {
         climateDataset.foreach(cd -> {
             cd.formatPeriod(cd.getPeriod());
         });
-        return generateRelevationDataset2(climateDataset);
+        return generateRelevationDataset(climateDataset);
     }
 
     @Nullable
@@ -127,11 +136,12 @@ public class Application {
             @Override
             public void patternUpdateStarted(PatternUpdateStartedEvent<ClimateData, TidSet> arg0) {
                 // do nothing
-                //log.info("started");
+                // log.info("started");
             }
 
             @Override
             public void changeDetected(ChangeDetectedEvent<ClimateData, TidSet> event) {
+                log.info("");
                 log.info("change detected: " + event.getAmount());
                 log.info("\tdescribed by:");
                 event.getDescription().forEach(p -> {
@@ -151,13 +161,13 @@ public class Application {
 
             @Override
             public void changeNotDetected(ChangeNotDetectedEvent<ClimateData, TidSet> arg0) {
-                //log.info("change not detected: " + arg0.getAmount());
+                // log.info("change not detected: " + arg0.getAmount());
             }
 
             @Override
             public void changeDescriptionCompleted(ChangeDescriptionCompletedEvent<ClimateData, TidSet> arg0) {
                 // do nothing
-                //log.info("Descriptor changed");
+                // log.info("Descriptor changed");
             }
 
             @Override
@@ -167,27 +177,20 @@ public class Application {
         });
     }
 
-    private static Stream<Relevation> generateRelevationDataset(List<ClimateData> complexUsers) {
-        Map<String, List<ClimateData>> map = complexUsers.stream().collect(groupingBy(ClimateData::getPeriod));
-        List<Relevation> result = new LinkedList<>();
-        map.forEach((key, value) -> {
-            value.sort(Comparator.comparing(ClimateData::getPeriod));
-            result.add(new Relevation(value));
-        });
-
-        return result.stream();
-    }
-
-    private static JavaPairRDD<String, Iterable<Relevation>> generateRelevationDataset2(Dataset<ClimateData> climateDataset) {
+    private static JavaPairRDD<String, Iterable<Relevation>> generateRelevationDataset(
+            Dataset<ClimateData> climateDataset) {
         JavaRDD<ClimateData> javaRDD = climateDataset.sort("DATE").toJavaRDD();
-        JavaPairRDD<String, Iterable<ClimateData>> stringIterableJavaPairRDD = javaRDD.groupBy(ClimateData::getDate).sortByKey();
+        JavaPairRDD<String, Iterable<ClimateData>> stringIterableJavaPairRDD = javaRDD.groupBy(ClimateData::getDate)
+                .sortByKey();
         JavaRDD<Relevation> ungroupedDataset = stringIterableJavaPairRDD.map(
                 el -> (new Relevation(StreamSupport.stream(el._2.spliterator(), false).collect(Collectors.toList()))));
-        return ungroupedDataset.groupBy(rel -> rel.reads.stream().findFirst().get().getPeriod(), ungroupedDataset.getNumPartitions()).sortByKey();
+        return ungroupedDataset
+                .groupBy(rel -> rel.reads.stream().findFirst().get().getPeriod(), ungroupedDataset.getNumPartitions())
+                .sortByKey();
     }
 
     public static PBCD<Relevation, ClimateData, TidSet, Boolean> getPBCD(float minFreq, float minChange,
-                                                                         int blockSize) {
+            int blockSize) {
         // we prepare the time window model and the data accessor
         WindowingStrategy<TidSet> model = Windows.cumulativeSliding();
         TidSetProvider<ClimateData> accessor = new TidSetProvider<>(model);
@@ -195,8 +198,6 @@ public class Application {
         // we instantiate the pattern language delegate
         MixedClimateJoiner joiner = new MixedClimateJoiner();
         // we instantiate the mining strategy
-        AreaHeuristic<ClimateData, TidSet> areaHeuristic = new AreaHeuristic<>();
-        int k = 3;
         MiningStrategy<ClimateData, TidSet> strategy = Strategies.upon(joiner).eclat(minFreq).dfs(accessor);
         // we assemble the PBCD
         return Detectors.upon(strategy)
